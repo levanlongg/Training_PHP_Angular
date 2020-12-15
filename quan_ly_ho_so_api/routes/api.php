@@ -14,6 +14,7 @@ Route::group([
     Route::get('/dia-chinh/get-tinh', 'DiaChinhController@getTinh');
     Route::get('/dia-chinh/get-huyen', 'DiaChinhController@getHuyen');
     Route::get('/dia-chinh/get-xa', 'DiaChinhController@getXa');
+    Route::get('/dia-chinh/get-dia-chi', 'DiaChinhController@getDiaChi');
 
     Route::group([
         'middleware' => 'UserGuard'
@@ -54,6 +55,19 @@ Route::group([
             Route::post('/create', 'CoQuanController@create');
             Route::put('/update', 'CoQuanController@update');
             Route::delete('/delete', 'CoQuanController@delete');
+
+        });
+
+        
+        Route::group([
+            'prefix' => '/user'
+        ], function () {
+
+            Route::get('/get', 'UserController@get');
+            Route::get('/pagination', 'UserController@pagination');
+            Route::post('/create', 'UserController@create');
+            Route::put('/update', 'UserController@update');
+            Route::delete('/block', 'UserController@block');
 
         });
 

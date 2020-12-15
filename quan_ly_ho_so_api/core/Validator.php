@@ -102,7 +102,7 @@ class Validator {
                 }
             break;
             case 'exists':
-                if(!DB::table($g)->where([$key => $value])->first()) {
+                if(!DB::table($g)->find($value)) {
                     return true;
                 }
             break;
@@ -111,12 +111,18 @@ class Validator {
                     return true;
                 }
             break;
+            case 'in':
+                $enum = explode(',', $g);
+                if(!in_array($value, $enum)) {
+                    return true;
+                }
+            break;
         }
         return false;
     }
 
     public static function alert($text) {
-        response()->error(0, $text);
+        response()->error(0, $text, 422);
     }
 
 }

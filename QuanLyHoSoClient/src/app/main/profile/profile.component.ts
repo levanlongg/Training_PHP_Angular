@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
-import {HomeService} from '../../service/home.service';
-import {FormBuilder, FormGroup, Validators} from '@angular/forms';
-import {AlertService} from '../../libs/alert.service';
-import {ActivatedRoute, Router} from '@angular/router';
-import {MessageService} from 'primeng/api';
-import {DatePipe} from "@angular/common";
+import {Component, OnInit, ViewChild} from '@angular/core';
+import {FormBuilder, FormGroup, Validators} from "@angular/forms";
+import {HomeService} from "../../services/home.service";
+import {MessageService} from "primeng/api";
+import {FileUpload} from "primeng/fileupload";
+import {AddressService} from "../../services/address.service";
+import { FileService } from 'src/app/libs/file.service';
+declare var $: any;
 
 @Component({
   selector: 'app-profile',
@@ -13,69 +14,64 @@ import {DatePipe} from "@angular/common";
   providers: [MessageService]
 })
 export class ProfileComponent implements OnInit {
-  pipe = new DatePipe("en-US");
-  listCity = [];
+  title = "Hồ sơ";
+  formProfile: FormGroup;
+  formChangePass: FormGroup;
+  submittedPro = false;
+  submittedCP = false;
+  listProvince = [];
   listDistrict = [];
   listCommune = [];
   style = {};
-  submittedRe = false;
-  submittedLo = false;
-  formRegister: FormGroup;
-  formLogin: FormGroup;
-  title = true;
-  returnUrl: string;
+  file_avatar: File;
 
   constructor(
     private homeService: HomeService,
-    private alertService: AlertService,
-    private  router: Router,
-    private formBuilder: FormBuilder,
+    private formBuider: FormBuilder,
     private messageService: MessageService,
-    private route: ActivatedRoute
+    private addressService: AddressService,
+    private fileService: FileService
   ) {
   }
 
   ngOnInit(): void {
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-
-    this.homeService.getAddress().subscribe((data: any) => {
-      this.listCity = data;
-    });
-
-    this.style = {
-      width: '100%',
-      // 'border-radius': '25px',
-      // 'padding-left': '22px',
-      // height: '50px',
-      boder: '1px solid rgba(51, 51, 51, 0.1);',
-      'font-weight': 400,
-      'font-family': 'Roboto'
-    };
-
-    this.formLogin = this.formBuilder.group({
-      email: ['', [Validators.required, Validators.email, Validators.minLength(8), Validators.maxLength(100)]],
-      mat_khau: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(50), Validators.pattern('^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$')]],
-    })
-
-    this.formRegister = this.formBuilder.group({
-      email: ['', [Validators.required, Validators.email, Validators.minLength(8), Validators.maxLength(100)]],
-      mat_khau: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(50), Validators.pattern('^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$')]],
-      mat_khau_2: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(50), Validators.pattern('^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$')]],
+    this.formProfile = this.formBuider.group({
       ho_ten: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(100)]],
       so_dien_thoai: ['', [Validators.required, Validators.pattern('^(0)[0-9]{9}$')]],
       dia_chi: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(150)]],
       ngay_sinh: ['', [Validators.required]],
       city: ['', [Validators.required]],
-      district: [{value: '', disabled: true}, [Validators.required]],
-      commune: [{value: '', disabled: true}, [Validators.required]]
+      district: ['', [Validators.required]],
+      commune: ['', [Validators.required]]
+    })
+
+    this.formChangePass = this.formBuider.group({
+      mat_khau_cu: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(50), Validators.pattern('^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$')]],
+      mat_khau_moi: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(50), Validators.pattern('^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$')]],
+      mat_khau_2: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(50), Validators.pattern('^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$')]],
     }, {
-      validator: this.confirm_password_validate('mat_khau', 'mat_khau_2')
+      validator: this.confirm_password_validate('mat_khau_moi', 'mat_khau_2')
+    })
+
+    let user = this.homeService.currentUser;
+    
+    this.addressService.getAddress(user.ward_id).subscribe((res: any) => {
+      this.listProvince = res.list_province;
+      this.listDistrict = res.list_district;
+      this.listCommune = res.list_ward;
+      this.formProfile.patchValue({
+        ho_ten: user.ho_ten,
+        so_dien_thoai: user.so_dien_thoai,
+        ngay_sinh: new Date(Date.parse(user.ngay_sinh)),
+        city: res.province.id,
+        district: res.district.id,
+        commune: res.ward.id
+      })
     })
   }
 
-  changeTitle(val) {
-    // this.title = val;
-    console.log(val)
+  get getUserAvatar() {
+    return "http://localhost:8200/storage" + this.homeService.currentUser.avatar;
   }
 
   confirm_password_validate(pass: string, pass_confirm: string) {
@@ -88,90 +84,75 @@ export class ProfileComponent implements OnInit {
       }
 
       if (control.value !== matchingControl.value) {
-        matchingControl.setErrors({ confirm_password: true });
+        matchingControl.setErrors({confirm_password: true});
       } else {
         matchingControl.setErrors(null);
       }
     };
   }
 
-  getDistrict(val) {
+  updateProfile() {
+    let profile = {
+      ho_ten: this.formProfile.value.ho_ten,
+
+    }
+  }
+
+  changeTitle(event) {
+    this.title = event.target.innerHTML;
+  }
+
+  getDistrict(id) {
     this.listDistrict = [];
     this.listCommune = [];
-
-    this.listDistrict = this.listCity.filter(d => d.name == val)[0].huyen;
-    if (this.listDistrict.length != 0) {
-      this.formRegister.controls.district.enable();
-    }
-  }
-
-  getCommune(val) {
-    this.listCommune = [];
-    this.listCommune = this.listDistrict.filter(c => c.name == val)[0].xa;
-    if (this.listCommune.length != 0) {
-      this.formRegister.controls.commune.enable();
-    }
-  }
-
-  register() {
-    let address = [];
-    if (this.formRegister.value.dia_chi != null) {
-      address.push(this.formRegister.value.dia_chi, this.formRegister.value.city,  this.formRegister.value.district, this.formRegister.value.commune);
-    } else {
-      address.push(this.formRegister.value.city,  this.formRegister.value.district, this.formRegister.value.commune);
-    }
-
-    this.submittedRe = true;
-    if(this.formRegister.invalid) {
-      return;
-    }
-    let user = {
-      email: this.formRegister.value.email,
-      mat_khau: this.formRegister.value.mat_khau,
-      ho_ten: this.formRegister.value.ho_ten,
-      so_dien_thoai: this.formRegister.value.so_dien_thoai,
-      dia_chi: address.join(", "),
-      ngay_sinh: this.pipe.transform(this.formRegister.value.ngay_sinh, "yyyy-MM-dd")
-    }
-    this.homeService.register(user).subscribe((res: any) => {
-      this.alertService.success(() => {
-        this.homeService.login(user).subscribe((res:any) => {
-          localStorage.setItem("jwt", JSON.stringify(res.data));
-          this.homeService.input(res.data);
-          if (this.returnUrl) {
-            this.router.navigateByUrl(this.returnUrl)
-          } else {
-            this.router.navigate(['/']);
-          }
-        })
-      });
-    }, err => {
-      if (err.status != 1) {
-        this.messageService.add({ severity: 'error', summary: 'Thất bại!', detail: err.error.message });
-      }
-    });
-  }
-
-  login() {
-    this.submittedLo = true;
-    if(this.formLogin.invalid) {
-      return;
-    }
-    this.homeService.login(this.formLogin.value).subscribe((res:any) => {
-      localStorage.setItem("jwt", JSON.stringify(res.data));
-      this.homeService.input(res.data);
-      this.alertService.success(() => {
-        if (this.returnUrl) {
-          this.router.navigateByUrl(this.returnUrl)
-        } else {
-          this.router.navigate(['/']);
-        }
-      });
-    }, err => {
-      if (err.status != 1) {
-        this.messageService.add({ severity: 'error', summary: 'Thất bại!', detail: err.error.message });
+    this.addressService.getDistrict(id).subscribe((res: any) => {
+      this.listDistrict = res;
+      if (this.listDistrict.length != 0) {
+        this.formProfile.controls.district.enable();
       }
     })
+  }
+
+  getCommune(id) {
+    this.listCommune = [];
+    this.addressService.getCommune(id).subscribe((res: any) => {
+      this.listCommune = res;
+      if (this.listCommune.length != 0) {
+        this.formProfile.controls.commune.enable();
+      }
+    })
+  }
+
+  changePass() {
+    this.submittedCP = true;
+    if (this.formChangePass.invalid) {
+      return false;
+    }
+    this.homeService.changePass(this.formChangePass.value).subscribe((res: any) => {
+      this.formChangePass.reset();
+      this.submittedCP = false;
+      this.messageService.add({severity: 'success', summary: 'Thành công!', detail: "Thay đổi mật khẩu thành công!"});
+    }, err => {
+      this.messageService.add({severity: 'error', summary: 'Thất bại!', detail: err.error.message});
+    })
+  }
+
+  uploadButton() {
+    $(".file-upload").click();
+  }
+
+  readFileUpload(files) {
+    if (files && files[0]) {
+      this.file_avatar = files[0];
+
+      var reader = new FileReader();
+
+      reader.onload = function (e) {
+          $('.profile-pic').attr('src', e.target.result);
+      }
+
+      reader.readAsDataURL(files[0]);
+  }
   }
 
 }
