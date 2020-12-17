@@ -44,8 +44,8 @@
               </div>
               <div *ngIf="submited && form.controls.mat_khau.errors">
                 <div class="text-danger" *ngIf="form.controls.mat_khau.errors.required">Chưa nhập mật khẩu.</div>
-                <div class="text-danger" *ngIf="form.controls.mat_khau.errors.minlength">Mật khẩu không được dưới 8 ký tự.</div>
-                <div class="text-danger" *ngIf="form.controls.mat_khau.errors.maxlength">Mật khẩu không được trên 50 ký tự.</div>
+                <div class="text-danger" *ngIf="form.controls.mat_khau.errors.minlength">Mật khẩu không ít hơn 8 ký tự.</div>
+                <div class="text-danger" *ngIf="form.controls.mat_khau.errors.maxlength">Mật khẩu không nhiều hơn 20 ký tự.</div>
                 <div class="text-danger" *ngIf="form.controls.mat_khau.errors.pattern">Mật khẩu không đúng định dạng.</div>
               </div>
             </div>
